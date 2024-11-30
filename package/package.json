@@ -21,7 +21,8 @@
   "scripts": {
     "prepare": "babel --extensions \".ts,.tsx\" --out-dir dist src",
     "lint": "npx eslint src",
-    "test": "npx jest src"
+    "test": "npx jest src",
+    "codegen-lib": "react-native codegen-lib-harmony --no-safety-check --npm-package-name slider --cpp-output-path ./harmony/slider/src/main/cpp/generated --ets-output-path ./harmony/slider/src/main/ets/generated --arkts-components-spec-paths ./src/RNCSliderNativeComponent.ts"
   },
   "dependencies": {
     "@react-native-community/slider": "4.4.3"
@@ -49,7 +50,8 @@
     "react-native": "^0.72.1",
     "react-native-windows": "^0.72.0",
     "react-test-renderer": "^18.2.0",
-    "typescript": "^4.7.4"
+    "typescript": "^4.7.4",
+    "@rnoh/react-native-harmony-cli": "file:../rnoh-react-native-harmony-cli-0.0.27.tgz"
   },
   "repository": {
     "type": "git",
