@@ -10,7 +10,7 @@
 
 namespace rnoh {
 class SliderPackage : public BaseSliderPackage {
-    using Super = SliderPackage;
+    using Super = BaseSliderPackage;
 //     using Super::Super;
 public:
     SliderPackage(Package::Context ctx) : Super(ctx) {}

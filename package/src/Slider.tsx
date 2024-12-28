@@ -6,6 +6,7 @@ import {
   AccessibilityActionEvent,
   ViewProps,
   ViewStyle,
+  processColor,
   ColorValue,
   NativeSyntheticEvent,
   StyleProp,
@@ -117,18 +118,18 @@ type Props = ViewProps &
      * The color used for the track to the left of the button.
      * Overrides the default blue gradient image on iOS.
      */
-    minimumTrackTintColor?: ColorValue;
+    minimumTrackTintColor?: string;
 
     /**
      * The color used for the track to the right of the button.
      * Overrides the default blue gradient image on iOS.
      */
-    maximumTrackTintColor?: ColorValue;
+    maximumTrackTintColor?: string;
     /**
      * The color used to tint the default thumb images on iOS, or the
      * color of the foreground switch grip on Android.
      */
-    thumbTintColor?: ColorValue;
+    thumbTintColor?: string;
 
     /**
      * If true the user won't be able to move the slider.
@@ -271,6 +272,11 @@ const SliderComponent = (
       onStartShouldSetResponder={() => true}
       onResponderTerminationRequest={() => false}
       onRNCSliderAccessibilityAction={onAccessibilityActionEvent}
+      minimumTrackTintColor={processColor(props.minimumTrackTintColor)}
+      maximumTrackTintColor={processColor(props.maximumTrackTintColor)}
+      thumbTintColor={processColor(props.thumbTintColor)}
+
+
     />
   );
 };

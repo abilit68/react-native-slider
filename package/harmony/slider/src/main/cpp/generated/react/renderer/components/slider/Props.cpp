@@ -9,7 +9,6 @@
  */
 
 #include <react/renderer/components/slider/Props.h>
-#include <react/renderer/components/image/conversions.h>
 #include <react/renderer/core/PropsParserContext.h>
 #include <react/renderer/core/propsConversions.h>
 

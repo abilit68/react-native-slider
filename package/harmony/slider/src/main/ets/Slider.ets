@@ -29,16 +29,22 @@ import {
   RNViewBase,
   ColorSegments,
   ViewRawProps,
+  RNComponentContext,
+  RNOHLogger
 } from '@rnoh/react-native-openharmony'
 import { SliderDescriptorWrapper } from './SliderDescriptorWrapper'
-import Logger from './Logger'
+import { RNC } from './generated/ts'
+// import Logger from './Logger'
 
-const TAG: string = "[RNOH] RNCSlider"
-
-export const SLIDER_TYPE: string = "RNCSlider"
+// const TAG: string = "[RNOH] RNCSlider"
+//
+// export const SLIDER_TYPE: string = "RNCSlider"
 
 const DEFAULT_LIMIT_VALUE = -9007199254740991;
 const DEFAULT_MAX_VALUE = 9007199254740991;
+const LIMIT_MIN_VALUE = Number.MIN_VALUE;
+const LIMIT_MAX_VALUE = Number.MAX_VALUE;
+
 
 export interface SliderProps extends ViewBaseProps {
   thumbImage?: string
@@ -64,46 +70,72 @@ export interface SliderRawProps extends ViewRawProps {
 }
 
 export type SliderDescriptor = Descriptor<"RNCSlider", SliderProps, SliderSate, SliderRawProps>
+export const SLIDER_TYPE: string = RNC.RNCSlider.NAME
 
 @Component
 export struct RNCSlider {
-  ctx!: RNOHContext
+  // ctx!: RNOHContext
+  ctx!: RNComponentContext
   tag: number = 0
-  @State descriptor: SliderDescriptor = {} as SliderDescriptor
-  @State private descriptorWrapper: SliderDescriptorWrapper | undefined = undefined
-  private unregisterDescriptorChangesListener?: ()=> void = undefined
+  // @State descriptor: SliderDescriptor = {} as SliderDescriptor
+  // @State private descriptorWrapper: SliderDescriptorWrapper | undefined = undefined
+  // private unregisterDescriptorChangesListener?: ()=> void = undefined
+  @State private descriptor: RNC.RNCSlider.DescriptorWrapper = {} as RNC.RNCSlider.DescriptorWrapper
   @State SliderValue: number = 0
   private lowerLimit = 0
   private upperLimit = 0
+  private logger: RNOHLogger | null = null;
+  // 存储需要在组件卸载时清理的回调函数
+  private cleanUpCallbacks: (() => void)[] = []
+  private eventEmitter: RNC.RNCSlider.EventEmitter | undefined = undefined
 
   aboutToAppear() {
-    this.descriptor = this.ctx.descriptorRegistry.getDescriptor<SliderDescriptor>(this.tag);
-    this.descriptorWrapper = new SliderDescriptorWrapper(this.descriptor);
-    this.unregisterDescriptorChangesListener = this.ctx.descriptorRegistry.subscribeToDescriptorChanges(this.tag,
-      (newDescriptor) => {
-        this.descriptor = (newDescriptor as SliderDescriptor)
-        this.descriptorWrapper = new SliderDescriptorWrapper(this.descriptor);
-        let value = this.descriptorWrapper.value;
-        if (value < this.lowerLimit) {
-          value = this.lowerLimit;
-        } else if (value > this.upperLimit) {
-          value = this.upperLimit;
-        }
-        this.SliderValue = value;
+    // this.descriptor = this.ctx.descriptorRegistry.getDescriptor<SliderDescriptor>(this.tag);
+    // this.descriptorWrapper = new SliderDescriptorWrapper(this.descriptor);
+    // this.unregisterDescriptorChangesListener = this.ctx.descriptorRegistry.subscribeToDescriptorChanges(this.tag,
+    //   (newDescriptor) => {
+    //     this.descriptor = (newDescriptor as SliderDescriptor)
+    //     this.descriptorWrapper = new SliderDescriptorWrapper(this.descriptor);
+    //     let value = this.descriptorWrapper.value;
+    //     if (value < this.lowerLimit) {
+    //       value = this.lowerLimit;
+    //     } else if (value > this.upperLimit) {
+    //       value = this.upperLimit;
+    //     }
+    //     this.SliderValue = value;
+    //   }
+    // );
+    // 创建EventEmitter实例，用于处理事件的订阅和触发
+    this.eventEmitter = new RNC.RNCSlider.EventEmitter(this.ctx.rnInstance, this.tag)
+    // 处理组件初始状态
+    this.onDescriptorWrapperChange(this.ctx.descriptorRegistry.findDescriptorWrapperByTag<RNC.RNCSlider.DescriptorWrapper>(this.tag)!)
+    this.logger = this.ctx?.logger.clone(RNC.RNCSlider.NAME);
+    this.SliderValue = this.descriptor.props.value;
+    this.upperLimit = this.descriptor.props.upperLimit ?? this.descriptor.props.maximumValue
+    this.lowerLimit = this.descriptor.props.lowerLimit;
+    // Logger.info(TAG, `descriptor props: ${JSON.stringify(this.descriptor.rawProps)}`)
+    // 订阅组件状态的变化，然后放入cleanUpCallbacks等待清理
+    this.cleanUpCallbacks.push( this.ctx.descriptorRegistry.subscribeToDescriptorChanges(this.tag,
+      (_descriptor, newDescriptorWrapper) => {
+        // 更新组件状态
+        this.onDescriptorWrapperChange(newDescriptorWrapper! as RNC.RNCSlider.DescriptorWrapper)
       }
-    );
-    this.SliderValue = this.descriptorWrapper.value;
-    this.upperLimit = this.descriptorWrapper.upperLimit;
-    this.lowerLimit = this.descriptorWrapper.lowerLimit;
-    Logger.info(TAG, `descriptor props: ${JSON.stringify(this.descriptor.rawProps)}`)
+    ))
   }
 
   aboutToDisappear() {
-    this.unregisterDescriptorChangesListener?.()
+    // this.unregisterDescriptorChangesListener?.()
+    // 执行所有清理回调
+    this.cleanUpCallbacks.forEach(cb => cb())
+  }
+  // 更新组件状态
+  private onDescriptorWrapperChange(descriptorWrapper: RNC.RNCSlider.DescriptorWrapper) {
+    this.logger?.info(`onDescriptorWrapperChange`)
+    this.descriptor = descriptorWrapper
   }
 
   onSliderChange(value: number, mode: SliderChangeMode) {
-    Logger.debug(TAG, `onSliderChange: ${value}, ${mode}`)
+    // Logger.debug(TAG, `onSliderChange: ${value}, ${mode}`)
     if (value < this.lowerLimit) {
       value = this.lowerLimit;
     } else if (value > this.upperLimit) {
@@ -111,71 +143,93 @@ export struct RNCSlider {
     }
     this.SliderValue = value
     if (mode === 0) {
-      this.ctx.rnInstance.emitComponentEvent(
-        this.descriptor.tag,
-        SLIDER_TYPE,
-        {
-          type: "SliderSlidingStart",
-          value: value,
-          // fromUser: true
-        }
-      );
+      // this.ctx.rnInstance.emitComponentEvent(
+      //   this.descriptor.tag,
+      //   SLIDER_TYPE,
+      //   {
+      //     type: "SliderSlidingStart",
+      //     value: value,
+      //     // fromUser: true
+      //   }
+      // );
+      this.eventEmitter!.emit("rNCSliderSlidingStart", { value: value });
     } else if (mode === 1) {
-      this.ctx.rnInstance.emitComponentEvent(
-        this.descriptor.tag,
-        SLIDER_TYPE,
-        {
-          type: "SliderValueChange",
-          value: value,
-          // fromUser: true
-        }
-      );
+      // this.ctx.rnInstance.emitComponentEvent(
+      //   this.descriptor.tag,
+      //   SLIDER_TYPE,
+      //   {
+      //     type: "SliderValueChange",
+      //     value: value,
+      //     // fromUser: true
+      //   }
+      // );
+      this.eventEmitter!.emit("change", { value: value });
     } else if (mode === 2) {
-      this.ctx.rnInstance.emitComponentEvent(
-        this.descriptor.tag,
-        SLIDER_TYPE,
-        {
-          type: "SliderSlidingComplete",
-          value: value,
-          // fromUser: true
-        }
-      );
+      // this.ctx.rnInstance.emitComponentEvent(
+      //   this.descriptor.tag,
+      //   SLIDER_TYPE,
+      //   {
+      //     type: "SliderSlidingComplete",
+      //     value: value,
+      //     // fromUser: true
+      //   }
+      // );
+      this.eventEmitter!.emit("rNCSliderSlidingComplete", { value: value });
     } else if (mode === 3) {
-      this.ctx.rnInstance.emitComponentEvent(
-        this.descriptor.tag,
-        SLIDER_TYPE,
-        {
-          type: "SliderValueChange",
-          value: value,
-          // fromUser: true
-        }
-      );
+      // this.ctx.rnInstance.emitComponentEvent(
+      //   this.descriptor.tag,
+      //   SLIDER_TYPE,
+      //   {
+      //     type: "SliderValueChange",
+      //     value: value,
+      //     // fromUser: true
+      //   }
+      // );
+      this.eventEmitter!.emit("rNCSliderValueChange", { value: value });
     }
+  }
+  public get source(): Resource {
+    if (this.descriptor.props.thumbImage?.startsWith("asset://")) {
+      return $rawfile(this.descriptor.props.thumbImage?.replace("asset://", "assets/"));
+    }
+    if (this.descriptor.props.thumbImage?.startsWith("file://assets/src/assets/")) {
+      return $rawfile(this.descriptor.props.thumbImage?.replace("file://assets/src/assets/", "assets/"));
+    }
+    return $rawfile(this.descriptor.props.thumbImage);
+  }
+  public get BlockStyle(): SliderBlockStyle {
+    if (this.descriptor.props.thumbImage) {
+      return {
+        type: SliderBlockType.IMAGE,
+        image: this.source
+      };
+    }
+    return { type: SliderBlockType.DEFAULT };
   }
 
   build() {
     RNViewBase({ ctx: this.ctx, tag: this.tag }) {
       Slider({
         value: this.SliderValue,
-        step: this.descriptor.rawProps.step,
-        min: this.descriptorWrapper?.minimumValue,
-        max: this.descriptorWrapper?.maximumValue,
-        direction: (this.descriptorWrapper?.direction),
-        reverse: (this.descriptorWrapper?.reverse),
+        step: this.descriptor.props.step,
+        min: this.descriptor.props?.minimumValue,
+        max: this.descriptor.props?.maximumValue,
+        direction: (this.descriptor.props.vertical ? Axis.Vertical : Axis.Horizontal),
+        reverse: (this.descriptor.props.inverted ? true : false),
         style: SliderStyle.OutSet
       })
         .width("100%")
         .height("100%")
-        .enabled(this.descriptorWrapper?.enabled)
-        .blockColor(this.descriptorWrapper?.blockColor)
-        .trackColor(this.descriptorWrapper?.trackColor)
-        .selectedColor(this.descriptorWrapper?.selectedColor)
+        .enabled(this.descriptor.props.disabled ? false : true)
+        .blockColor(this.descriptor.props.thumbTintColor?.toRGBAString())
+        .trackColor(this.descriptor.props.maximumTrackTintColor?.toRGBAString())
+        .selectedColor(this.descriptor.props.minimumTrackTintColor?.toRGBAString())
         .showSteps(false)
-        .blockStyle(this.descriptorWrapper?.BlockStyle)
+        .blockStyle(this.BlockStyle)
         .onChange((value: number, mode: SliderChangeMode) => this.onSliderChange(value, mode))
         .slideRange({
-          from: this.lowerLimit === DEFAULT_LIMIT_VALUE ? this.descriptorWrapper?.minimumValue : this.lowerLimit,
-          to: this.upperLimit === DEFAULT_MAX_VALUE ? this.descriptorWrapper?.maximumValue : this.upperLimit
+          from: this.lowerLimit === DEFAULT_LIMIT_VALUE ? this.descriptor.props.minimumValue ?? LIMIT_MIN_VALUE : this.lowerLimit,
+          to: this.upperLimit === DEFAULT_MAX_VALUE ? this.descriptor.props.maximumValue ?? LIMIT_MAX_VALUE : this.upperLimit
         })
     }
   }

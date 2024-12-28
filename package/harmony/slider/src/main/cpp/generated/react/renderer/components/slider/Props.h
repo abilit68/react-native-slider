@@ -12,7 +12,6 @@
 #include <react/renderer/components/view/ViewProps.h>
 #include <react/renderer/core/PropsParserContext.h>
 #include <react/renderer/graphics/Color.h>
-#include <react/renderer/imagemanager/primitives.h>
 #include <vector>
 
 namespace facebook {
@@ -31,17 +30,17 @@ class RNCSliderProps final : public ViewProps {
   bool inverted{false};
   bool vertical{false};
   bool tapToSeek{false};
-  ImageSource maximumTrackImage{};
+  std::string maximumTrackImage{};
   SharedColor maximumTrackTintColor{};
   Float maximumValue{0.0};
-  ImageSource minimumTrackImage{};
+  std::string minimumTrackImage{};
   SharedColor minimumTrackTintColor{};
   Float minimumValue{0.0};
   Float step{0.0};
   std::string testID{};
-  ImageSource thumbImage{};
+  std::string thumbImage{};
   SharedColor thumbTintColor{};
-  ImageSource trackImage{};
+  std::string trackImage{};
   Float value{0.0};
   Float lowerLimit{0.0};
   Float upperLimit{0.0};

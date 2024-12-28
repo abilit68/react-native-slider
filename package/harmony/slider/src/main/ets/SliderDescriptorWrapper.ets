@@ -43,7 +43,7 @@ export class SliderDescriptorWrapper extends ViewDescriptorWrapperBase<string, S
   }
 
   public get upperLimit(): number {
-    return this.rawProps.upperLimit ?? this.maximumValue
+      return this.rawProps.upperLimit ?? this.maximumValue
   }
 
   public get lowerLimit(): number {
